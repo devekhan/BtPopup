@@ -14,12 +14,12 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.LifecycleRegistry
 import androidx.lifecycle.ViewModelStore
 import androidx.lifecycle.ViewModelStoreOwner
-import androidx.lifecycle.ViewTreeLifecycleOwner
-import androidx.lifecycle.ViewTreeViewModelStoreOwner
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.lifecycle.setViewTreeViewModelStoreOwner
 import androidx.savedstate.SavedStateRegistry
 import androidx.savedstate.SavedStateRegistryController
 import androidx.savedstate.SavedStateRegistryOwner
-import androidx.savedstate.ViewTreeSavedStateRegistryOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 
 /** Shows the popup card as a window over any app (needs "Display over other apps"). */
 object PopupController {
@@ -40,9 +40,9 @@ object PopupController {
         val wm = app.getSystemService(Context.WINDOW_SERVICE) as WindowManager
         val o = OverlayOwner().also { it.start() }
         val cv = ComposeView(app).apply {
-            ViewTreeLifecycleOwner.set(this, o)
-            ViewTreeViewModelStoreOwner.set(this, o)
-            ViewTreeSavedStateRegistryOwner.set(this, o)
+            setViewTreeLifecycleOwner(o)
+            setViewTreeViewModelStoreOwner(o)
+            setViewTreeSavedStateRegistryOwner(o)
             setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnDetachedFromWindow)
             setContent { PopupHost(info) { dismissNow() } }
         }
