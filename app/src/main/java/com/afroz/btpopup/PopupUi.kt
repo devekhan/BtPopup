@@ -51,8 +51,11 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.FilterQuality
+import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.res.imageResource
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -84,20 +87,26 @@ fun RotatingDevice(kind: DeviceKind, modifier: Modifier = Modifier) {
 @Composable
 private fun SwayingFrames(frames: List<Int>, modifier: Modifier) {
     val transition = rememberInfiniteTransition(label = "sway")
+    // t walks through the photos and back again
     val t by transition.animateFloat(
         initialValue = 0f,
         targetValue = (frames.size - 1).toFloat(),
-        animationSpec = infiniteRepeatable(tween(9000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        animationSpec = infiniteRepeatable(tween(12000, easing = LinearEasing), RepeatMode.Reverse),
         label = "t",
     )
-    val bob by transition.animateFloat(
-        initialValue = -3f,
-        targetValue = 3f,
-        animationSpec = infiniteRepeatable(tween(2600, easing = FastOutSlowInEasing), RepeatMode.Reverse),
-        label = "bob",
+    // gentle continuous yaw so the device never looks frozen between photo changes
+    val yaw by transition.animateFloat(
+        initialValue = -6f,
+        targetValue = 6f,
+        animationSpec = infiniteRepeatable(tween(3000, easing = FastOutSlowInEasing), RepeatMode.Reverse),
+        label = "yaw",
     )
+    val bitmaps = frames.map { ImageBitmap.imageResource(it) }
     val k = floor(t).toInt().coerceIn(0, frames.size - 2)
-    val f = (t - k).coerceIn(0f, 1f)
+    val p = (t - k).coerceIn(0f, 1f)
+    // hold each photo cleanly, then blend quickly in the middle of each step (no long ghosting)
+    val x = ((p - 0.35f) / 0.30f).coerceIn(0f, 1f)
+    val f = x * x * (3f - 2f * x)
 
     Box(modifier.aspectRatio(1f), contentAlignment = Alignment.Center) {
         // soft light behind the device
@@ -122,13 +131,23 @@ private fun SwayingFrames(frames: List<Int>, modifier: Modifier) {
                 size = Size(w, h),
             )
         }
-        Box(Modifier.fillMaxSize().graphicsLayer { translationY = bob.dp.toPx() }) {
-            // lower frame stays opaque, next frame fades in on top: no see-through dip
-            Image(painterResource(frames[k]), contentDescription = null, modifier = Modifier.fillMaxSize())
+        Box(
+            Modifier.fillMaxSize().graphicsLayer {
+                rotationY = yaw
+                cameraDistance = 16f * density
+            },
+        ) {
             Image(
-                painterResource(frames[k + 1]), contentDescription = null,
-                modifier = Modifier.fillMaxSize().graphicsLayer { alpha = f },
+                bitmap = bitmaps[k], contentDescription = null,
+                filterQuality = FilterQuality.High, modifier = Modifier.fillMaxSize(),
             )
+            if (f > 0f) {
+                Image(
+                    bitmap = bitmaps[k + 1], contentDescription = null,
+                    filterQuality = FilterQuality.High,
+                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = f },
+                )
+            }
         }
     }
 }
